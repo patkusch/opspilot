@@ -83,16 +83,6 @@ uvicorn app.main:app --reload
 Try: `clear the low-value GBP breaks under 500`, then `write off everything` and watch the
 large items get escalated instead.
 
-## Design lineage
-
-OpsPilot "steals like an artist" from three hackathon-winning projects:
-
-- **SipQuest** — *natural-language intent → a verified real-world action*, with hard safety
-  constraints on what the agent may do unattended.
-- **RuleLift** — *prove, don't trust*: the outcome is checked against the ledger; the agent
-  never reports success it can't demonstrate.
-- **Remedia** — *control beats autonomy*: guardrails live in code, human approves the run,
-  every action is audited.
 
 ---
 
