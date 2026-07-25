@@ -1,6 +1,6 @@
 """The agent's brain — deterministic, guardrailed, and self-verifying.
 
-Design lineage (steal like an artist):
+Design influences:
   • SipQuest  — natural-language intent → a *verified* real-world action, with hard
                 safety constraints on what the agent may do unattended.
   • RuleLift  — prove, don't trust: the outcome is checked against the ledger, and
