@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpsPilot — agentic back-office ops copilot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body { background:#080b0a; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .grid-bg {
+      background-image: radial-gradient(rgba(52,211,153,.06) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+    ::-webkit-scrollbar{width:8px;height:8px}
+    ::-webkit-scrollbar-thumb{background:#1f2a26;border-radius:4px}
+  </style>
+</head>
+<body class="grid-bg text-zinc-200 min-h-screen">
+  <div class="mx-auto max-w-6xl px-6 py-8">
+
+    <!-- Header -->
+    <header class="flex flex-wrap items-end justify-between gap-4 border-b border-zinc-800 pb-5">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="mono text-2xl font-bold text-lime-300">Ops<span class="text-cyan-300">Pilot</span></span>
+          <span class="mono rounded bg-lime-400/10 px-2 py-0.5 text-[11px] text-lime-300 ring-1 ring-lime-400/30">agent</span>
+        </div>
+        <p class="mt-1 max-w-xl text-sm text-zinc-400">
+          Chat an intent. The agent inspects the breaks queue, plans, and — once you approve —
+          <span class="text-zinc-200">acts and proves the outcome against the ledger.</span>
+        </p>
+      </div>
+      <button id="reset" class="mono rounded px-3 py-1 text-xs text-zinc-400 ring-1 ring-zinc-700 hover:text-zinc-100 hover:ring-zinc-500">reset demo</button>
+    </header>
+
+    <!-- Headline stats -->
+    <section class="mt-6 grid gap-4 sm:grid-cols-4">
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+        <div id="s-open" class="mono text-3xl font-bold text-zinc-100">—</div>
+        <div class="text-xs text-zinc-500">open breaks</div>
+      </div>
+      <div class="rounded-xl border border-cyan-900/40 bg-cyan-950/20 p-4">
+        <div id="s-ledger" class="mono text-3xl font-bold text-cyan-300">—</div>
+        <div class="text-xs text-zinc-500">unreconciled position</div>
+      </div>
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 sm:col-span-2">
+        <div class="text-xs uppercase tracking-wide text-zinc-500">guardrails (enforced in code)</div>
+        <div id="s-guards" class="mono mt-1 text-xs leading-relaxed text-zinc-300"></div>
+      </div>
+    </section>
+
+    <!-- Command bar -->
+    <section class="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+      <label class="text-xs uppercase tracking-wide text-zinc-500">Ops intent</label>
+      <div class="mt-2 flex flex-col gap-3 md:flex-row">
+        <input id="intent" class="mono flex-1 rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-lime-200 outline-none placeholder:text-zinc-600 focus:border-lime-500"
+               placeholder="e.g. clear the low-value GBP breaks under 500" />
+        <input id="operator" class="mono w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500 md:w-52"
+               placeholder="operator name" />
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2" id="examples"></div>
+      <div class="mt-4 flex items-center gap-3">
+        <button id="preview" class="mono rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-black hover:bg-white">Preview plan</button>
+        <button id="run" class="mono rounded-lg bg-lime-400 px-4 py-2 text-sm font-medium text-black hover:bg-lime-300">Approve &amp; run ▶</button>
+        <span id="err" class="text-sm text-rose-400"></span>
+      </div>
+    </section>
+
+    <!-- Plan preview -->
+    <section id="plan" class="mt-6 hidden"></section>
+
+    <!-- Run result -->
+    <section id="result" class="mt-6 hidden"></section>
+
+    <!-- Queue + audit tabs -->
+    <nav class="mt-8 flex gap-1 border-b border-zinc-800">
+      <button data-tab="queue" class="tab -mb-px border-b-2 border-lime-400 px-4 py-2 text-sm font-medium text-lime-300">Breaks queue</button>
+      <button data-tab="audit" class="tab -mb-px border-b-2 border-transparent px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200">Audit trail</button>
+    </nav>
+    <section id="queue" class="tabpane mt-4"></section>
+    <section id="audit" class="tabpane mt-4 hidden"></section>
+
+    <footer class="mt-12 border-t border-zinc-800 pt-6 text-xs text-zinc-600 mono">
+      OpsPilot · synthetic breaks queue, illustrative figures · the agent does the volume, a human keeps control.
+    </footer>
+  </div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const gbp0 = (n) => "£" + Math.round(n).toLocaleString("en-GB");
+const gbp2 = (n) => "£" + n.toLocaleString("en-GB", {minimumFractionDigits:2, maximumFractionDigits:2});
+
+const EXAMPLES = [
+  "clear the low-value GBP breaks under 500",
+  "write off small stale duplicates",
+  "reconcile the timing breaks",
+  "triage everything",
+  "write off everything",
+];
+
+const ACTION_STYLE = {
+  auto_match: "text-lime-300 bg-lime-400/10 ring-lime-400/30",
+  write_off:  "text-cyan-300 bg-cyan-400/10 ring-cyan-400/30",
+  escalate:   "text-amber-300 bg-amber-400/10 ring-amber-400/30",
+};
+
+async function api(path, body) {
+  const opt = body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {};
+  const res = await fetch(path, opt);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "error");
+  return data;
+}
+
+let STATE = null;
+
+async function refresh() {
+  STATE = await api("/api/state");
+  $("#s-open").textContent = STATE.open_count;
+  $("#s-ledger").textContent = gbp0(STATE.ledger_open_gbp);
+  const g = STATE.guardrails;
+  $("#s-guards").innerHTML =
+    `• dual control ≥ ${gbp0(g.dual_control_limit)} → human only<br>` +
+    `• agent write-off ≤ ${gbp0(g.write_off_limit)} · min age ${g.write_off_min_age}d · batch cap ${gbp0(g.batch_write_off_cap)}`;
+  renderQueue();
+  renderAudit();
+}
+
+function dispositionRow(d) {
+  const s = ACTION_STYLE[d.action];
+  return `<div class="flex items-start justify-between gap-3 rounded-lg border border-zinc-800 bg-black/40 px-3 py-2">
+    <div class="min-w-0">
+      <span class="mono text-xs text-zinc-400">${d.break_id}</span>
+      <span class="mono ml-2 text-xs text-zinc-200">${gbp2(d.amount_gbp)}</span>
+      <div class="text-xs text-zinc-500">${d.reason}</div>
+    </div>
+    <span class="mono shrink-0 rounded px-2 py-0.5 text-[11px] ring-1 ${s}">${d.action.replace("_","-")}</span>
+  </div>`;
+}
+
+function renderPlan(p) {
+  const el = $("#plan"); el.classList.remove("hidden");
+  const auto = p.dispositions.filter(d => d.eligible);
+  const esc = p.dispositions.filter(d => !d.eligible);
+  const f = p.parsed.filters;
+  const filterTxt = Object.keys(f).length ? Object.entries(f).map(([k,v])=>`${k}=${v}`).join(" · ") : "no filter (whole queue)";
+  el.innerHTML = `
+    <div class="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+      <div class="flex items-center justify-between">
+        <h3 class="mono text-sm text-zinc-300">Plan preview <span class="text-zinc-500">— no changes made yet</span></h3>
+        <span class="mono text-xs text-zinc-500">action: <span class="text-zinc-200">${p.parsed.action}</span> · ${filterTxt}</span>
+      </div>
+      <div class="mt-3 grid gap-4 md:grid-cols-2">
+        <div>
+          <div class="mb-2 text-xs uppercase tracking-wide text-lime-300/80">Agent will action (${auto.length}) — ${gbp0(p.summary.auto_value_gbp)}</div>
+          <div class="space-y-1.5">${auto.map(dispositionRow).join("") || '<div class="text-xs text-zinc-600">none eligible</div>'}</div>
+        </div>
+        <div>
+          <div class="mb-2 text-xs uppercase tracking-wide text-amber-300/80">Escalated to human (${esc.length}) — ${gbp0(p.summary.escalated_value_gbp)}</div>
+          <div class="space-y-1.5 max-h-80 overflow-auto">${esc.map(dispositionRow).join("") || '<div class="text-xs text-zinc-600">none</div>'}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function checkRow(c) {
+  return `<div class="flex items-start gap-2 rounded-lg border ${c.passed?'border-lime-900/50 bg-lime-950/20':'border-rose-900/50 bg-rose-950/20'} px-3 py-2">
+    <span class="mono ${c.passed?'text-lime-300':'text-rose-300'}">${c.passed?'✓':'✗'}</span>
+    <div><div class="mono text-xs ${c.passed?'text-lime-200':'text-rose-200'}">${c.name}</div>
+    <div class="text-xs text-zinc-500">${c.detail}</div></div>
+  </div>`;
+}
+
+function renderResult(r) {
+  const el = $("#result"); el.classList.remove("hidden");
+  el.innerHTML = `
+    <div class="rounded-2xl border ${r.ok?'border-lime-800/50 bg-lime-950/10':'border-rose-800/50 bg-rose-950/10'} p-5">
+      <div class="flex items-center gap-2">
+        <span class="mono rounded px-2 py-0.5 text-[11px] ring-1 ${r.ok?'text-lime-300 ring-lime-400/30 bg-lime-400/10':'text-rose-300 ring-rose-400/30 bg-rose-400/10'}">${r.ok?'VERIFIED':'FAILED'}</span>
+        <span class="text-sm text-zinc-200">${r.summary}</span>
+      </div>
+      <div class="mono mt-3 text-sm text-zinc-400">
+        ledger <span class="text-zinc-200">${gbp0(r.ledger_before)}</span> → <span class="text-cyan-300">${gbp0(r.ledger_after)}</span>
+        · reconciled <span class="text-lime-300">${gbp0(r.reconciled_gbp)}</span>
+        · signed off by <span class="text-amber-300">${r.operator}</span>
+      </div>
+      <div class="mt-4 grid gap-2 sm:grid-cols-2">${r.verification.map(checkRow).join("")}</div>
+    </div>`;
+  el.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+const ST_STYLE = { open:"text-zinc-300", cleared:"text-lime-300", escalated:"text-amber-300" };
+function renderQueue() {
+  const rows = STATE.breaks.map(b => `
+    <tr class="border-t border-zinc-800/70 hover:bg-zinc-900/40">
+      <td class="mono px-3 py-1.5 text-xs text-zinc-400">${b.id}</td>
+      <td class="px-3 py-1.5 text-xs">${b.break_type}</td>
+      <td class="px-3 py-1.5 text-xs text-zinc-400">${b.currency}</td>
+      <td class="mono px-3 py-1.5 text-xs text-right ${b.amount_gbp>=10000?'text-amber-300':'text-zinc-200'}">${gbp2(b.amount_gbp)}</td>
+      <td class="mono px-3 py-1.5 text-xs text-right text-zinc-500">${b.age_days}d</td>
+      <td class="px-3 py-1.5 text-center text-xs">${b.has_offset?'<span class="text-lime-400">✓</span>':'<span class="text-zinc-600">–</span>'}</td>
+      <td class="mono px-3 py-1.5 text-xs ${ST_STYLE[b.status]}">${b.status}${b.cleared_by?` · ${b.cleared_by}`:''}</td>
+    </tr>`).join("");
+  $("#queue").innerHTML = `
+    <div class="overflow-x-auto rounded-xl border border-zinc-800">
+      <table class="w-full text-sm">
+        <thead class="bg-zinc-900/60 text-left text-xs uppercase tracking-wide text-zinc-500">
+          <tr><th class="px-3 py-2">break</th><th class="px-3 py-2">type</th><th class="px-3 py-2">ccy</th>
+          <th class="px-3 py-2 text-right">amount</th><th class="px-3 py-2 text-right">age</th>
+          <th class="px-3 py-2 text-center">offset</th><th class="px-3 py-2">status</th></tr>
+        </thead><tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderAudit() {
+  $("#audit").innerHTML = STATE.audit.map(e => `
+    <div class="flex gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+      <div class="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-400"></div>
+      <div class="flex-1 min-w-0">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="mono text-xs text-cyan-300">${e.action}</span>
+          <span class="mono ml-auto text-[11px] text-zinc-600">${e.ts.replace("T"," ").slice(0,19)}</span>
+        </div>
+        <div class="mt-0.5 text-sm text-zinc-300">${e.detail}</div>
+        <div class="mt-0.5 text-xs text-zinc-500">actor: <span class="${e.actor==='agent'?'text-cyan-300':'text-amber-300'}">${e.actor}</span></div>
+      </div>
+    </div>`).join("");
+}
+
+// wiring
+$("#examples").innerHTML = EXAMPLES.map(x => `<button class="ex mono rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-400 hover:border-lime-500 hover:text-lime-300">${x}</button>`).join("");
+document.querySelectorAll(".ex").forEach(b => b.onclick = () => { $("#intent").value = b.textContent; });
+
+$("#preview").onclick = async () => {
+  $("#err").textContent = "";
+  try { renderPlan(await api("/api/plan", {intent: $("#intent").value})); }
+  catch(e){ $("#err").textContent = e.message; }
+};
+
+$("#run").onclick = async () => {
+  $("#err").textContent = "";
+  try {
+    const r = await api("/api/run", {intent: $("#intent").value, operator: $("#operator").value});
+    renderResult(r);
+    await refresh();
+  } catch(e){ $("#err").textContent = e.message; }
+};
+
+$("#reset").onclick = async () => {
+  await api("/api/reset", {});
+  $("#plan").classList.add("hidden"); $("#result").classList.add("hidden");
+  $("#err").textContent = "";
+  await refresh();
+};
+
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.className = x.className.replace("border-lime-400 text-lime-300","border-transparent text-zinc-400"));
+  t.className = t.className.replace("border-transparent text-zinc-400","border-lime-400 text-lime-300");
+  document.querySelectorAll(".tabpane").forEach(p => p.classList.add("hidden"));
+  $("#"+t.dataset.tab).classList.remove("hidden");
+});
+
+refresh();
+</script>
+</body>
+</html>
