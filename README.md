@@ -80,6 +80,13 @@ uvicorn app.main:app --reload
 # open http://127.0.0.1:8000
 ```
 
+The guardrails are tested from the outside — ask for the forbidden thing, check the code
+refuses — and the verifier is handed a forged plan to prove it does not trust the planner:
+
+```bash
+pip install -r requirements-dev.txt && python -m pytest -q
+```
+
 Try: `clear the low-value GBP breaks under 500`, then `write off everything` and watch the
 large items get escalated instead.
 

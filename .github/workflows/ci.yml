@@ -12,8 +12,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python -m compileall -q app
+      - name: guardrails and verification, tested from the outside
+        run: python -m pytest -q
       - name: app boots and serves the UI and the state endpoint
         run: |
           uvicorn app.main:app --port 8765 & PID=$!

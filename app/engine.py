@@ -35,10 +35,11 @@ def parse_intent(intent: str) -> dict:
     parsed: dict = {"action": action, "filters": {}}
     f = parsed["filters"]
 
-    m = re.search(r"(under|below|less than|<)\s*[£$€]?\s*([\d,]+)", t)
+    # An amount, not an age: "over 90 days" must not become a £90 floor as well.
+    m = re.search(r"(under|below|less than|<)\s*[£$€]?\s*([\d,]+)\b(?!\s*days?\b)", t)
     if m:
         f["max_amount"] = float(m.group(2).replace(",", ""))
-    m = re.search(r"(over|above|more than|greater than|>)\s*[£$€]?\s*([\d,]+)", t)
+    m = re.search(r"(over|above|more than|greater than|>)\s*[£$€]?\s*([\d,]+)\b(?!\s*days?\b)", t)
     if m:
         f["min_amount"] = float(m.group(2).replace(",", ""))
     m = re.search(r"(older than|over|>)\s*(\d+)\s*day", t)
