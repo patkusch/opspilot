@@ -225,11 +225,20 @@ def execute_and_verify(plan: Plan, breaks: list[Break], operator: str) -> RunRes
     ]
     ok = all(c.passed for c in checks)
 
-    summary = (
-        f"Cleared {len(executed)} break(s), £{reconciled:,.0f} reconciled, "
-        f"ledger {'balanced ✓' if ok else 'FAILED ✗'} — "
-        f"{len(escalated)} item(s) escalated to a human. Verified, not asserted."
-    )
+    # The closing words follow the verifier's verdict, never the other way round.
+    if ok:
+        summary = (
+            f"Cleared {len(executed)} break(s), £{reconciled:,.0f} reconciled, "
+            f"ledger balanced ✓ — {len(escalated)} item(s) escalated to a human. "
+            f"Verified, not asserted."
+        )
+    else:
+        failed = ", ".join(c.name for c in checks if not c.passed)
+        summary = (
+            f"Verification FAILED: {failed}. Nothing here should be trusted until a "
+            f"person reviews it. (The run applied {len(executed)} action(s) worth "
+            f"£{reconciled:,.0f} and escalated {len(escalated)} item(s); none of that is verified.)"
+        )
     return RunResult(ok=ok, operator=operator, executed=executed, escalated=escalated,
                      verification=checks, ledger_before=before, ledger_after=after,
                      reconciled_gbp=reconciled, summary=summary)

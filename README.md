@@ -17,7 +17,7 @@
 <br/>
 
 [![License](https://img.shields.io/badge/License-MIT-1A1A1A?style=for-the-badge)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-24-2ea043?style=for-the-badge)](./tests/test_guardrails.py)
+[![Tests](https://img.shields.io/badge/tests-27-2ea043?style=for-the-badge)](./tests/test_guardrails.py)
 [![CI](https://img.shields.io/github/actions/workflow/status/patkusch/opspilot/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/patkusch/opspilot/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.12+-1A1A1A?style=for-the-badge&logo=python&logoColor=white)](./requirements.txt)
 
@@ -63,7 +63,7 @@ In plain words: every pound that left the queue is either cleared or in a person
 Two more refusals:
 
 - **It cannot approve its own work.** Sending the same instruction to the running app with the operator name `agent` is refused with HTTP 400, `{"detail":"The agent cannot authorise its own run — a human must."}`, and all 60 breaks stay open.
-- **The second check does not trust the first.** [One test](tests/test_guardrails.py) hands it a plan the planning step would never make: matching a £50,000 item automatically. The run comes back failed (`ledger FAILED ✗`), and the one check that fails is `No over-limit item auto-actioned`.
+- **The second check does not trust the first.** [One test](tests/test_guardrails.py) hands it a plan the planning step would never make: matching a £50,000 item automatically. The run comes back failed, and the one check that fails is `No over-limit item auto-actioned`. The summary says so instead of claiming success: `Verification FAILED: No over-limit item auto-actioned. Nothing here should be trusted until a person reviews it.` "Verified, not asserted." only ever appears on a run whose four checks all passed.
 
 The queue is the same on every start, so you can repeat all of this: [Quick start](#quick-start).
 

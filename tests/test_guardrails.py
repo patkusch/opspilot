@@ -157,6 +157,37 @@ class TestVerification:
         assert failed == ["No over-limit item auto-actioned"]
         assert "FAILED" in result.summary
 
+    def test_a_failed_run_never_says_it_was_verified(self):
+        b = brk("big", 50_000, offset=True)
+        rogue = Plan(intent="x", parsed={}, dispositions=[Disposition(
+            break_id="big", amount_gbp=50_000, action="auto_match",
+            eligible=True, requires_human=False, reason="forged")], summary={})
+        result = execute_and_verify(rogue, [b], "Priya Shah")
+        assert not result.ok
+        assert "Verified, not asserted" not in result.summary
+        assert "balanced" not in result.summary
+        assert result.summary.startswith("Verification FAILED: No over-limit item auto-actioned.")
+        assert "person reviews it" in result.summary
+
+    def test_a_failed_run_says_the_same_in_the_audit_trail(self, monkeypatch):
+        store = Store()
+        store.breaks = [brk("big", 50_000, offset=True)]
+        rogue = Plan(intent="x", parsed={}, dispositions=[Disposition(
+            break_id="big", amount_gbp=50_000, action="auto_match",
+            eligible=True, requires_human=False, reason="forged")], summary={})
+        monkeypatch.setattr(engine, "build_plan", lambda intent, breaks: rogue)
+        result = store.run("match everything", "Priya Shah")
+        assert not result.ok
+        entry = next(a for a in store.audit if a.action == "run.executed")
+        assert "Verification FAILED" in entry.detail and "Verified, not asserted" not in entry.detail
+
+    def test_a_clean_run_still_closes_with_verified_not_asserted(self):
+        breaks = seed_breaks()
+        result = execute_and_verify(build_plan("write off everything", breaks), breaks, "Priya Shah")
+        assert result.ok
+        assert result.summary.endswith("Verified, not asserted.")
+        assert "FAILED" not in result.summary
+
     def test_a_second_run_leaves_escalated_items_with_the_human(self):
         store = Store()
         first = store.run("write off everything", "Priya Shah")

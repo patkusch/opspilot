@@ -183,7 +183,7 @@ function renderResult(r) {
       </div>
       <div class="mono mt-3 text-sm text-zinc-400">
         ledger <span class="text-zinc-200">${gbp0(r.ledger_before)}</span> → <span class="text-cyan-300">${gbp0(r.ledger_after)}</span>
-        · reconciled <span class="text-lime-300">${gbp0(r.reconciled_gbp)}</span>
+        · ${r.ok?'reconciled':'applied, NOT verified'} <span class="${r.ok?'text-lime-300':'text-rose-300'}">${gbp0(r.reconciled_gbp)}</span>
         · signed off by <span class="text-amber-300">${r.operator}</span>
       </div>
       <div class="mt-4 grid gap-2 sm:grid-cols-2">${r.verification.map(checkRow).join("")}</div>
