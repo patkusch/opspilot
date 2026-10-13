@@ -9,6 +9,7 @@
 
 <br/>
 
+[![ci](https://github.com/patkusch/opspilot/actions/workflows/ci.yml/badge.svg)](https://github.com/patkusch/opspilot/actions/workflows/ci.yml)
 [![OpsPilot after a "write off everything" run: what it wrote off, what it refused, and the four checks](./docs/hero.png)](./docs/hero.png)
 
 **A real run.** Every figure in the picture comes from the running app.
