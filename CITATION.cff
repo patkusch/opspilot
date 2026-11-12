@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "opspilot"
+abstract: "A back-office assistant for banks. You say what you want done, it plans the work on the queue of unmatched payments, a person approves, and every result is checked against the ledger."
+type: software
+authors:
+  - family-names: "Kusch"
+    given-names: "Patricia"
+repository-code: "https://github.com/patkusch/opspilot"
+license: MIT
