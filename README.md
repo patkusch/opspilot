@@ -18,7 +18,7 @@
 <br/>
 
 [![License](https://img.shields.io/badge/License-MIT-1A1A1A?style=for-the-badge)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-27-2ea043?style=for-the-badge)](./tests/test_guardrails.py)
+[![Tests](https://img.shields.io/badge/tests-33-2ea043?style=for-the-badge)](./tests/test_guardrails.py)
 [![CI](https://img.shields.io/github/actions/workflow/status/patkusch/opspilot/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/patkusch/opspilot/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.12+-1A1A1A?style=for-the-badge&logo=python&logoColor=white)](./requirements.txt)
 
