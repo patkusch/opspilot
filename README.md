@@ -158,3 +158,7 @@ python docs/make_hero.py http://127.0.0.1:8000
 <div align="center">
 <sub>Synthetic breaks queue, illustrative figures · MIT · the agent does the volume, a human keeps control.</sub>
 </div>
+
+---
+
+[Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)
