@@ -31,3 +31,14 @@ jobs:
           curl -sf -o /dev/null -w 'root %{http_code}\n' http://127.0.0.1:8765/
           curl -sf -o /dev/null -w 'state %{http_code}\n' http://127.0.0.1:8765/api/state
           kill $PID
+
+  instructions:
+    # AGENTS.md says how to run the tests and where things are. mandata checks that it is still true.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with: { python-version: "3.13" }
+      - run: pip install git+https://github.com/patkusch/mandata
+      - run: mandata .
